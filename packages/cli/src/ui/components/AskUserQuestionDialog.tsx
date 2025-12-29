@@ -5,7 +5,7 @@
  */
 
 import type React from 'react';
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { Box, Text } from 'ink';
 import { theme } from '../semantic-colors.js';
 import type { Question, QuestionOption } from '@google/gemini-cli-core';
@@ -37,6 +37,19 @@ export const AskUserQuestionDialog: React.FC<AskUserQuestionDialogProps> = ({
   );
   const [highlightedValue, setHighlightedValue] = useState<string | null>(null);
 
+  // Use refs to avoid recreating callbacks on every keystroke
+  const customInputRef = useRef(customInputValue);
+  const answersRef = useRef(answers);
+
+  // Keep refs in sync with state
+  useEffect(() => {
+    customInputRef.current = customInputValue;
+  }, [customInputValue]);
+
+  useEffect(() => {
+    answersRef.current = answers;
+  }, [answers]);
+
   const currentQuestion = questions[currentQuestionIndex];
   const questionId = `question_${currentQuestionIndex + 1}`;
   const isLastQuestion = currentQuestionIndex === questions.length - 1;
@@ -55,14 +68,13 @@ export const AskUserQuestionDialog: React.FC<AskUserQuestionDialogProps> = ({
   ];
 
   // Convert to DescriptiveRadioSelectItem format
-  const radioItems: Array<DescriptiveRadioSelectItem<string>> = optionsWithOther.map(
-    (opt: ExtendedOption, index: number) => ({
+  const radioItems: Array<DescriptiveRadioSelectItem<string>> =
+    optionsWithOther.map((opt: ExtendedOption, index: number) => ({
       key: `option-${index}`,
       title: opt.label,
       description: opt.description,
       value: opt.value,
-    }),
-  );
+    }));
 
   const handleSingleSelection = (value: string) => {
     if (value === 'Other') {
@@ -94,15 +106,19 @@ export const AskUserQuestionDialog: React.FC<AskUserQuestionDialogProps> = ({
       }
 
       if (key.name === 'return') {
-        // Submit custom input
-        if (customInputValue.trim()) {
-          const newAnswers = { ...answers, [questionId]: customInputValue };
+        // Submit custom input - use ref for current value
+        const currentValue = customInputRef.current;
+        if (currentValue.trim()) {
+          const newAnswers = {
+            ...answersRef.current,
+            [questionId]: currentValue,
+          };
           setAnswers(newAnswers);
 
           if (isLastQuestion) {
             onComplete(newAnswers);
           } else {
-            setCurrentQuestionIndex(currentQuestionIndex + 1);
+            setCurrentQuestionIndex((prev) => prev + 1);
             setShowOtherInput(false);
             setCustomInputValue('');
           }
@@ -111,23 +127,16 @@ export const AskUserQuestionDialog: React.FC<AskUserQuestionDialogProps> = ({
       }
 
       if (key.name === 'backspace') {
-        setCustomInputValue(customInputValue.slice(0, -1));
+        setCustomInputValue((prev) => prev.slice(0, -1));
         return;
       }
 
       // Regular character input
       if (key.sequence && key.sequence.length === 1 && !key.ctrl && !key.meta) {
-        setCustomInputValue(customInputValue + key.sequence);
+        setCustomInputValue((prev) => prev + key.sequence);
       }
     },
-    [
-      customInputValue,
-      answers,
-      questionId,
-      isLastQuestion,
-      onComplete,
-      currentQuestionIndex,
-    ],
+    [questionId, isLastQuestion, onComplete],
   );
 
   const handleMultiSelectToggle = useCallback(() => {

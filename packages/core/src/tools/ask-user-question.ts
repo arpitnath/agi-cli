@@ -64,9 +64,9 @@ const QuestionSchema = z.object({
   header: z
     .string()
     .min(1)
-    .max(12)
+    .max(20)
     .describe(
-      'Short label displayed as a chip/tag (max 12 chars). Example: "Auth method", "Database", "Approach"',
+      'Short label displayed as chip/tag (max 20 chars). Examples: "Auth", "Database", "Framework", "Deploy"',
     ),
   options: z
     .array(QuestionOptionSchema)
@@ -133,6 +133,16 @@ class AskUserQuestionInvocation extends BaseToolInvocation<
 > {
   constructor(params: AskUserQuestionParams, messageBus?: MessageBus) {
     super(params, messageBus, ASK_USER_QUESTION_TOOL_NAME);
+  }
+
+  /**
+   * Skip confirmation - this tool is inherently interactive with the user.
+   * The tool itself asks questions, so a pre-confirmation would be redundant.
+   */
+  override async shouldConfirmExecute(
+    _abortSignal: AbortSignal,
+  ): Promise<false> {
+    return false;
   }
 
   getDescription(): string {

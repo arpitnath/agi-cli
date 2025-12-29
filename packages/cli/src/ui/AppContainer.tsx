@@ -553,7 +553,7 @@ Logging in with Google... Restarting Gemini CLI to continue.
         return;
       }
 
-      messageBus.publish({
+      void messageBus.publish({
         type: MessageBusType.ASK_USER_QUESTION_RESPONSE,
         correlationId: askUserQuestionRequest.correlationId,
         answers,
@@ -567,7 +567,9 @@ Logging in with Google... Restarting Gemini CLI to continue.
   // Subscribe to ASK_USER_QUESTION requests from Core
   useEffect(() => {
     const messageBus = config.getMessageBus();
-    if (!messageBus) return;
+    if (!messageBus) {
+      return;
+    }
 
     const handler = (request: AskUserQuestionRequest) => {
       setAskUserQuestionRequest(request);
@@ -1412,6 +1414,7 @@ Logging in with Google... Restarting Gemini CLI to continue.
     !!customDialog ||
     confirmUpdateExtensionRequests.length > 0 ||
     !!loopDetectionConfirmationRequest ||
+    !!askUserQuestionRequest ||
     isThemeDialogOpen ||
     isSettingsDialogOpen ||
     isModelDialogOpen ||
@@ -1583,6 +1586,7 @@ Logging in with Google... Restarting Gemini CLI to continue.
       showPrivacyNotice,
       corgiMode,
       debugMessage,
+      askUserQuestionRequest,
       quittingMessages,
       isSettingsDialogOpen,
       isSessionBrowserOpen,
@@ -1740,7 +1744,6 @@ Logging in with Google... Restarting Gemini CLI to continue.
       handleApiKeySubmit,
       handleApiKeyCancel,
       handleAskUserQuestionComplete,
-      askUserQuestionRequest,
       setBannerVisible,
       setEmbeddedShellFocused,
     ],
