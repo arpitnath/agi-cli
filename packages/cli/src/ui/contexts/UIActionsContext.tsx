@@ -59,6 +59,7 @@ export interface UIActions {
   handleAskUserQuestionComplete: (
     answers: Record<string, string | string[]>,
   ) => void;
+  handlePlanModeApprovalComplete: (approved: boolean, reason?: string) => void;
 }
 
 export const UIActionsContext = createContext<UIActions | null>(null);

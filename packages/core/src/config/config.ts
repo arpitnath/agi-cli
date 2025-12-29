@@ -59,6 +59,8 @@ import type { MCPOAuthConfig } from '../mcp/oauth-provider.js';
 import { ideContextStore } from '../ide/ideContext.js';
 import { WriteTodosTool } from '../tools/write-todos.js';
 import { AskUserQuestionTool } from '../tools/ask-user-question.js';
+import { EnterPlanModeTool } from '../tools/enter-plan-mode.js';
+import { ExitPlanModeTool } from '../tools/exit-plan-mode.js';
 import type { FileSystemService } from '../services/fileSystemService.js';
 import { StandardFileSystemService } from '../services/fileSystemService.js';
 import { logRipgrepFallback } from '../telemetry/loggers.js';
@@ -397,6 +399,8 @@ export class Config {
   private readonly noBrowser: boolean;
   private readonly folderTrust: boolean;
   private ideMode: boolean;
+  private isPlanMode: boolean = false;
+  private planFilePath: string | null = null;
 
   private _activeModel: string;
   private readonly maxSessionTurns: number;
@@ -1403,6 +1407,35 @@ export class Config {
   }
 
   /**
+   * Check if Plan Mode is active.
+   * In Plan Mode, only read-only tools are available.
+   */
+  getIsPlanMode(): boolean {
+    return this.isPlanMode;
+  }
+
+  /**
+   * Set Plan Mode state.
+   */
+  setIsPlanMode(value: boolean): void {
+    this.isPlanMode = value;
+  }
+
+  /**
+   * Get the current plan file path (set after plan approval).
+   */
+  getPlanFilePath(): string | null {
+    return this.planFilePath;
+  }
+
+  /**
+   * Set the plan file path.
+   */
+  setPlanFilePath(path: string | null): void {
+    this.planFilePath = path;
+  }
+
+  /**
    * Get the current FileSystemService
    */
   getFileSystemService(): FileSystemService {
@@ -1675,6 +1708,10 @@ export class Config {
       registerCoreTool(WriteTodosTool, this);
     }
     registerCoreTool(AskUserQuestionTool, this);
+
+    // Register Plan Mode tools
+    registerCoreTool(EnterPlanModeTool, this);
+    registerCoreTool(ExitPlanModeTool, this);
 
     // Register Subagents as Tools
     // Register DelegateToAgentTool if agents are enabled

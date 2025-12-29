@@ -31,6 +31,8 @@ import { MessageType, StreamingState } from './types.js';
 import {
   type EditorType,
   type AskUserQuestionRequest,
+  type PlanModeApprovalRequest,
+  type PlanModeStateChange,
   MessageBusType,
   type Config,
   type IdeInfo,
@@ -237,6 +239,10 @@ export const AppContainer = (props: AppContainerProps) => {
   const [isPermissionsDialogOpen, setPermissionsDialogOpen] = useState(false);
   const [askUserQuestionRequest, setAskUserQuestionRequest] =
     useState<AskUserQuestionRequest | null>(null);
+  const [planModeApprovalRequest, setPlanModeApprovalRequest] =
+    useState<PlanModeApprovalRequest | null>(null);
+  const [isPlanMode, setIsPlanMode] = useState(false);
+  const [planFilePath, setPlanFilePath] = useState<string | null>(null);
   const [permissionsDialogProps, setPermissionsDialogProps] = useState<{
     targetDirectory?: string;
   } | null>(null);
@@ -582,6 +588,75 @@ Logging in with Google... Restarting Gemini CLI to continue.
 
     return () => {
       messageBus.unsubscribe(MessageBusType.ASK_USER_QUESTION_REQUEST, handler);
+    };
+  }, [config]);
+
+  // Handler for plan mode approval completion
+  const handlePlanModeApprovalComplete = useCallback(
+    (approved: boolean, reason?: string) => {
+      const messageBus = config.getMessageBus();
+      if (!messageBus || !planModeApprovalRequest) {
+        return;
+      }
+
+      void messageBus.publish({
+        type: MessageBusType.PLAN_MODE_APPROVAL_RESPONSE,
+        correlationId: planModeApprovalRequest.correlationId,
+        approved,
+        reason,
+      });
+
+      setPlanModeApprovalRequest(null);
+    },
+    [config, planModeApprovalRequest],
+  );
+
+  // Subscribe to PLAN_MODE_APPROVAL_REQUEST from Core
+  useEffect(() => {
+    const messageBus = config.getMessageBus();
+    if (!messageBus) {
+      return;
+    }
+
+    const approvalHandler = (request: PlanModeApprovalRequest) => {
+      setPlanModeApprovalRequest(request);
+    };
+
+    messageBus.subscribe<PlanModeApprovalRequest>(
+      MessageBusType.PLAN_MODE_APPROVAL_REQUEST,
+      approvalHandler,
+    );
+
+    return () => {
+      messageBus.unsubscribe(
+        MessageBusType.PLAN_MODE_APPROVAL_REQUEST,
+        approvalHandler,
+      );
+    };
+  }, [config]);
+
+  // Subscribe to PLAN_MODE_STATE_CHANGE from Core
+  useEffect(() => {
+    const messageBus = config.getMessageBus();
+    if (!messageBus) {
+      return;
+    }
+
+    const stateHandler = (message: PlanModeStateChange) => {
+      setIsPlanMode(message.isPlanMode);
+      setPlanFilePath(message.planFilePath ?? null);
+    };
+
+    messageBus.subscribe<PlanModeStateChange>(
+      MessageBusType.PLAN_MODE_STATE_CHANGE,
+      stateHandler,
+    );
+
+    return () => {
+      messageBus.unsubscribe(
+        MessageBusType.PLAN_MODE_STATE_CHANGE,
+        stateHandler,
+      );
     };
   }, [config]);
 
@@ -1415,6 +1490,7 @@ Logging in with Google... Restarting Gemini CLI to continue.
     confirmUpdateExtensionRequests.length > 0 ||
     !!loopDetectionConfirmationRequest ||
     !!askUserQuestionRequest ||
+    !!planModeApprovalRequest ||
     isThemeDialogOpen ||
     isSettingsDialogOpen ||
     isModelDialogOpen ||
@@ -1497,6 +1573,9 @@ Logging in with Google... Restarting Gemini CLI to continue.
       corgiMode,
       debugMessage,
       askUserQuestionRequest,
+      planModeApprovalRequest,
+      isPlanMode,
+      planFilePath,
       quittingMessages,
       isSettingsDialogOpen,
       isSessionBrowserOpen,
@@ -1587,6 +1666,9 @@ Logging in with Google... Restarting Gemini CLI to continue.
       corgiMode,
       debugMessage,
       askUserQuestionRequest,
+      planModeApprovalRequest,
+      isPlanMode,
+      planFilePath,
       quittingMessages,
       isSettingsDialogOpen,
       isSessionBrowserOpen,
@@ -1697,6 +1779,7 @@ Logging in with Google... Restarting Gemini CLI to continue.
       onEscapePromptChange: handleEscapePromptChange,
       refreshStatic,
       handleAskUserQuestionComplete,
+      handlePlanModeApprovalComplete,
       handleFinalSubmit,
       handleClearScreen,
       handleProQuotaChoice,
@@ -1744,6 +1827,7 @@ Logging in with Google... Restarting Gemini CLI to continue.
       handleApiKeySubmit,
       handleApiKeyCancel,
       handleAskUserQuestionComplete,
+      handlePlanModeApprovalComplete,
       setBannerVisible,
       setEmbeddedShellFocused,
     ],

@@ -43,6 +43,7 @@ export const Footer: React.FC = () => {
     nightly,
     isTrustedFolder,
     mainAreaWidth,
+    isPlanMode,
   } = {
     model: uiState.currentModel,
     targetDir: config.getTargetDir(),
@@ -56,6 +57,7 @@ export const Footer: React.FC = () => {
     nightly: uiState.nightly,
     isTrustedFolder: uiState.isTrustedFolder,
     mainAreaWidth: uiState.mainAreaWidth,
+    isPlanMode: uiState.isPlanMode,
   };
 
   const showMemoryUsage =
@@ -83,12 +85,13 @@ export const Footer: React.FC = () => {
       alignItems="center"
       paddingX={1}
     >
-      {(showDebugProfiler || displayVimMode || !hideCWD) && (
+      {(showDebugProfiler || displayVimMode || isPlanMode || !hideCWD) && (
         <Box>
           {showDebugProfiler && <DebugProfiler />}
           {displayVimMode && (
             <Text color={theme.text.secondary}>[{displayVimMode}] </Text>
           )}
+          {isPlanMode && <Text color={theme.ui.symbol}>[PLAN] </Text>}
           {!hideCWD &&
             (nightly ? (
               <ThemedGradient>

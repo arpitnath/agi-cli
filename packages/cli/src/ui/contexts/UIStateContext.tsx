@@ -24,6 +24,7 @@ import type {
   IdeInfo,
   FallbackIntent,
   AskUserQuestionRequest,
+  PlanModeApprovalRequest,
 } from '@google/gemini-cli-core';
 import type { DOMElement } from 'ink';
 import type { SessionStatsState } from '../contexts/SessionContext.js';
@@ -73,6 +74,9 @@ export interface UIState {
   confirmUpdateExtensionRequests: ConfirmationRequest[];
   loopDetectionConfirmationRequest: LoopDetectionConfirmationRequest | null;
   askUserQuestionRequest: AskUserQuestionRequest | null;
+  planModeApprovalRequest: PlanModeApprovalRequest | null;
+  isPlanMode: boolean;
+  planFilePath: string | null;
   geminiMdFileCount: number;
   streamingState: StreamingState;
   initError: string | null;

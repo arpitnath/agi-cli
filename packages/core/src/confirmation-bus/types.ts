@@ -18,6 +18,9 @@ export enum MessageBusType {
   HOOK_POLICY_DECISION = 'hook-policy-decision',
   ASK_USER_QUESTION_REQUEST = 'ask-user-question-request',
   ASK_USER_QUESTION_RESPONSE = 'ask-user-question-response',
+  PLAN_MODE_STATE_CHANGE = 'plan-mode-state-change',
+  PLAN_MODE_APPROVAL_REQUEST = 'plan-mode-approval-request',
+  PLAN_MODE_APPROVAL_RESPONSE = 'plan-mode-approval-response',
 }
 
 export interface ToolConfirmationRequest {
@@ -111,6 +114,26 @@ export interface AskUserQuestionResponse {
   answers: Record<string, string | string[]>;
 }
 
+export interface PlanModeStateChange {
+  type: MessageBusType.PLAN_MODE_STATE_CHANGE;
+  isPlanMode: boolean;
+  planFilePath?: string | null;
+}
+
+export interface PlanModeApprovalRequest {
+  type: MessageBusType.PLAN_MODE_APPROVAL_REQUEST;
+  correlationId: string;
+  planFilePath: string;
+  planSummary?: string;
+}
+
+export interface PlanModeApprovalResponse {
+  type: MessageBusType.PLAN_MODE_APPROVAL_RESPONSE;
+  correlationId: string;
+  approved: boolean;
+  reason?: string;
+}
+
 export type Message =
   | ToolConfirmationRequest
   | ToolConfirmationResponse
@@ -122,4 +145,7 @@ export type Message =
   | HookExecutionResponse
   | HookPolicyDecision
   | AskUserQuestionRequest
-  | AskUserQuestionResponse;
+  | AskUserQuestionResponse
+  | PlanModeStateChange
+  | PlanModeApprovalRequest
+  | PlanModeApprovalResponse;
