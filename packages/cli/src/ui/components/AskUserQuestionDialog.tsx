@@ -12,6 +12,7 @@ import type { Question, QuestionOption } from '@google/gemini-cli-core';
 import { DescriptiveRadioButtonSelect } from './shared/DescriptiveRadioButtonSelect.js';
 import type { DescriptiveRadioSelectItem } from './shared/DescriptiveRadioButtonSelect.js';
 import { useKeypress, type Key } from '../hooks/useKeypress.js';
+import { useSelectionList } from '../hooks/useSelectionList.js';
 
 export interface AskUserQuestionDialogProps {
   questions: Question[];
@@ -35,7 +36,6 @@ export const AskUserQuestionDialog: React.FC<AskUserQuestionDialogProps> = ({
   const [selectedMultiOptions, setSelectedMultiOptions] = useState<Set<string>>(
     new Set(),
   );
-  const [highlightedValue, setHighlightedValue] = useState<string | null>(null);
 
   // Use refs to avoid recreating callbacks on every keystroke
   const customInputRef = useRef(customInputValue);
@@ -75,6 +75,22 @@ export const AskUserQuestionDialog: React.FC<AskUserQuestionDialogProps> = ({
       description: opt.description,
       value: opt.value,
     }));
+
+  // Use headless hook for multi-select keyboard navigation
+  const handleMultiSelectItemSelect = useCallback((value: string) => {
+    if (value === 'Other') {
+      setShowOtherInput(true);
+      setCustomInputValue('');
+    }
+  }, []);
+
+  const { activeIndex: multiSelectActiveIndex } = useSelectionList({
+    items: radioItems,
+    onSelect: handleMultiSelectItemSelect,
+    isFocused:
+      currentQuestion.multiSelect === true && !showOtherInput && isFocused,
+    showNumbers: false,
+  });
 
   const handleSingleSelection = (value: string) => {
     if (value === 'Other') {
@@ -140,16 +156,18 @@ export const AskUserQuestionDialog: React.FC<AskUserQuestionDialogProps> = ({
   );
 
   const handleMultiSelectToggle = useCallback(() => {
-    if (!highlightedValue) return;
+    const highlightedItem = radioItems[multiSelectActiveIndex];
+    if (!highlightedItem) return;
 
+    const value = highlightedItem.value;
     const newSelected = new Set(selectedMultiOptions);
-    if (newSelected.has(highlightedValue)) {
-      newSelected.delete(highlightedValue);
+    if (newSelected.has(value)) {
+      newSelected.delete(value);
     } else {
-      newSelected.add(highlightedValue);
+      newSelected.add(value);
     }
     setSelectedMultiOptions(newSelected);
-  }, [highlightedValue, selectedMultiOptions]);
+  }, [radioItems, multiSelectActiveIndex, selectedMultiOptions]);
 
   const handleMultiSelectConfirm = useCallback(() => {
     if (selectedMultiOptions.size === 0) {
@@ -250,7 +268,9 @@ export const AskUserQuestionDialog: React.FC<AskUserQuestionDialogProps> = ({
           <Box flexDirection="column" marginTop={1}>
             {radioItems.map((item, index) => {
               const isSelected = selectedMultiOptions.has(item.value);
+              const isHighlighted = index === multiSelectActiveIndex;
               const checkbox = isSelected ? '[x]' : '[ ]';
+              const pointer = isHighlighted ? '>' : ' ';
 
               return (
                 <Box
@@ -259,26 +279,22 @@ export const AskUserQuestionDialog: React.FC<AskUserQuestionDialogProps> = ({
                   marginBottom={index < radioItems.length - 1 ? 1 : 0}
                 >
                   <Text>
+                    <Text color={isHighlighted ? theme.ui.symbol : undefined}>
+                      {pointer}
+                    </Text>
                     <Text color={theme.ui.symbol}>{checkbox}</Text>{' '}
-                    <Text bold={isSelected}>{item.title}</Text>
+                    <Text
+                      bold={isSelected || isHighlighted}
+                      color={isHighlighted ? theme.ui.symbol : undefined}
+                    >
+                      {item.title}
+                    </Text>
                   </Text>
                   <Text color={theme.text.secondary}> {item.description}</Text>
                 </Box>
               );
             })}
           </Box>
-          <DescriptiveRadioButtonSelect
-            items={radioItems}
-            onSelect={(value) => {
-              if (value === 'Other') {
-                setShowOtherInput(true);
-                setCustomInputValue('');
-              }
-            }}
-            onHighlight={setHighlightedValue}
-            isFocused={isFocused}
-            showNumbers={false}
-          />
           {selectedMultiOptions.size > 0 && (
             <Text color={theme.text.secondary}>
               {selectedMultiOptions.size} selected (Press Enter to confirm)
