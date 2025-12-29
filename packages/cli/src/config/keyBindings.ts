@@ -75,6 +75,9 @@ export enum Command {
   // Suggestion expansion
   EXPAND_SUGGESTION = 'expandSuggestion',
   COLLAPSE_SUGGESTION = 'collapseSuggestion',
+
+  // Working mode
+  TOGGLE_MODE = 'toggleMode',
 }
 
 /**
@@ -217,6 +220,9 @@ export const defaultKeyBindings: KeyBindingConfig = {
   // Suggestion expansion
   [Command.EXPAND_SUGGESTION]: [{ key: 'right' }],
   [Command.COLLAPSE_SUGGESTION]: [{ key: 'left' }],
+
+  // Working mode
+  [Command.TOGGLE_MODE]: [{ key: 'p', ctrl: true, shift: true }],
 };
 
 interface CommandCategory {
@@ -313,6 +319,10 @@ export const commandCategories: readonly CommandCategory[] = [
     title: 'Session Control',
     commands: [Command.QUIT, Command.EXIT],
   },
+  {
+    title: 'Working Mode',
+    commands: [Command.TOGGLE_MODE],
+  },
 ];
 
 /**
@@ -366,4 +376,5 @@ export const commandDescriptions: Readonly<Record<Command, string>> = {
     'Toggle focus between the shell and Gemini input.',
   [Command.EXPAND_SUGGESTION]: 'Expand an inline suggestion.',
   [Command.COLLAPSE_SUGGESTION]: 'Collapse an inline suggestion.',
+  [Command.TOGGLE_MODE]: 'Toggle between Plan Mode and Default Mode.',
 };

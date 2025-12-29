@@ -1355,6 +1355,10 @@ Logging in with Google... Restarting Gemini CLI to continue.
         if (activePtyId || embeddedShellFocused) {
           setEmbeddedShellFocused((prev) => !prev);
         }
+      } else if (keyMatchers[Command.TOGGLE_MODE](key)) {
+        // Toggle between Plan Mode and Default Mode
+        const modeCommand = isPlanMode ? '/mode default' : '/mode plan';
+        void handleSlashCommand(modeCommand);
       }
     },
     [
@@ -1375,6 +1379,7 @@ Logging in with Google... Restarting Gemini CLI to continue.
       setCopyModeEnabled,
       copyModeEnabled,
       isAlternateBuffer,
+      isPlanMode,
     ],
   );
 

@@ -28,6 +28,28 @@ export const ENTER_PLAN_MODE_TOOL_NAME = 'enter_plan_mode';
 export const EXIT_PLAN_MODE_TOOL_NAME = 'exit_plan_mode';
 
 /**
+ * Working modes for the CLI agent.
+ * Extensible to support future modes like 'brainstorm', 'research', etc.
+ */
+export enum WorkingMode {
+  /** Default mode - all tools available */
+  DEFAULT = 'default',
+  /** Plan mode - read-only exploration, blocked mutator tools */
+  PLAN = 'plan',
+  // Future modes can be added here:
+  // BRAINSTORM = 'brainstorm',
+  // RESEARCH = 'research',
+}
+
+/**
+ * Human-readable descriptions for each working mode.
+ */
+export const WORKING_MODE_DESCRIPTIONS: Record<WorkingMode, string> = {
+  [WorkingMode.DEFAULT]: 'All tools available for implementation',
+  [WorkingMode.PLAN]: 'Read-only exploration mode for planning',
+};
+
+/**
  * Tools that are BLOCKED when in Plan Mode.
  * These are mutator tools that modify files or execute commands.
  */
