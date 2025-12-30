@@ -3,7 +3,7 @@
 # Users can override this by creating ~/.gemini/agents/explore.toml or .gemini/agents/explore.toml
 
 name = "explore"
-description = "Searches and explores the codebase to find files, understand structure, and answer questions"
+description = "Searches and explores the codebase to find files, understand structure, and answer questions. Works well with 'review' for comprehensive code analysis or in parallel to explore multiple areas simultaneously."
 display_name = "Explore"
 
 # Tools must be defined BEFORE any [section] headers in TOML

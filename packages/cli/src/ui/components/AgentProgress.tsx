@@ -22,11 +22,6 @@ const AGENT_BG_COLORS: Record<string, string> = {
 };
 
 /**
- * Text color for agent labels (dark text on colored backgrounds).
- */
-const AGENT_TEXT_COLOR = 'black';
-
-/**
  * Formats elapsed time in a human-readable format.
  */
 function formatElapsedTime(startTime: number): string {
@@ -40,46 +35,74 @@ function formatElapsedTime(startTime: number): string {
 }
 
 /**
- * AgentProgress displays real-time status of a running sub-agent.
+ * AgentProgress displays real-time status of running sub-agents.
+ *
+ * Supports multiple concurrent agents with a tree-style display:
+ * ```
+ * Running 2 agents... (esc to cancel)
+ * ├─ Explore · Running
+ * │  └─ ⠋ Searching for files · 0 tools · 5s
+ * └─ Review · Running
+ *    └─ ⠋ Analyzing patterns · 0 tools · 5s
+ * ```
  *
  * Styled to match Claude Code's sub-agent display:
- * - Colored background for agent name
- * - Tree structure with └─ characters
- * - Clean, professional appearance
+ * - Colored background for agent name with white text for contrast
+ * - Tree structure with ├─/└─ characters
+ * - Header showing agent count
  */
 export const AgentProgress: React.FC = () => {
-  const { activeAgent } = useUIState();
+  const { activeAgents } = useUIState();
 
-  if (!activeAgent) {
+  if (activeAgents.size === 0) {
     return null;
   }
 
-  const { name, displayName, status, toolCallCount, startTime } = activeAgent;
-
-  const bgColor = AGENT_BG_COLORS[name] || 'blue';
-  const displayLabel = displayName || name;
-  const elapsedTime = formatElapsedTime(startTime);
+  const agents = Array.from(activeAgents.values());
 
   return (
     <Box flexDirection="column" marginY={0}>
-      {/* Main agent line with tree structure */}
+      {/* Header line showing agent count */}
       <Box flexDirection="row">
-        <Text dimColor>├─ </Text>
-        <Text backgroundColor={bgColor} color={AGENT_TEXT_COLOR}>
-          {` ${displayLabel} `}
-        </Text>
-        <Text dimColor> · </Text>
-        <Text color="green">Running</Text>
+        <Text>Running </Text>
+        <Text bold>{agents.length}</Text>
+        <Text> agent{agents.length > 1 ? 's' : ''}...</Text>
+        <Text dimColor> (esc to cancel)</Text>
       </Box>
 
-      {/* Status line with tree continuation */}
-      <Box flexDirection="row">
-        <Text dimColor>│  └─ </Text>
-        <CliSpinner type="dots" />
-        <Text> </Text>
-        <Text>{status || 'Working'}</Text>
-        <Text dimColor> · {toolCallCount} tools · {elapsedTime}</Text>
-      </Box>
+      {/* Agent list with tree structure */}
+      {agents.map((agent, index) => {
+        const isLast = index === agents.length - 1;
+        const bgColor = AGENT_BG_COLORS[agent.name] || 'blue';
+        const elapsedTime = formatElapsedTime(agent.startTime);
+        const displayLabel = agent.displayName || agent.name;
+
+        return (
+          <Box key={agent.executionId} flexDirection="column">
+            {/* Main agent line */}
+            <Box flexDirection="row">
+              <Text dimColor>{isLast ? '└─ ' : '├─ '}</Text>
+              <Text backgroundColor={bgColor} color="white" bold>
+                {` ${displayLabel} `}
+              </Text>
+              <Text dimColor> · </Text>
+              <Text color="green">Running</Text>
+            </Box>
+
+            {/* Status line with tree continuation */}
+            <Box flexDirection="row">
+              <Text dimColor>{isLast ? '   └─ ' : '│  └─ '}</Text>
+              <CliSpinner type="dots" />
+              <Text> </Text>
+              <Text>{agent.status || 'Working'}</Text>
+              <Text dimColor>
+                {' '}
+                · {agent.toolCallCount} tools · {elapsedTime}
+              </Text>
+            </Box>
+          </Box>
+        );
+      })}
     </Box>
   );
 };

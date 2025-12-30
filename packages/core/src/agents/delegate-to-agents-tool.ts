@@ -76,7 +76,9 @@ export class DelegateToAgentsTool extends BaseDeclarativeTool<
         delegations: z
           .array(
             z.object({
-              agent_name: z.string().describe('No agents are currently available.'),
+              agent_name: z
+                .string()
+                .describe('No agents are currently available.'),
               prompt: z.string().describe('The task to delegate to the agent'),
             }),
           )
@@ -127,9 +129,14 @@ export class DelegateToAgentsTool extends BaseDeclarativeTool<
     super(
       DELEGATE_TO_AGENTS_TOOL_NAME,
       'Delegate to Multiple Agents (Parallel)',
-      'Execute multiple agent delegations in parallel. Use this when you need ' +
-        'multiple perspectives or parallel analysis. Results are returned together ' +
-        'for you to synthesize. Maximum 5 concurrent delegations.',
+      'Run multiple specialized agents simultaneously for comprehensive analysis. ' +
+        'Use this tool when:\n' +
+        '• You need multiple perspectives on the same problem (e.g., explore + review for thorough code analysis)\n' +
+        '• You want to explore different areas of the codebase in parallel (e.g., auth module AND payment module)\n' +
+        '• The task benefits from diverse expertise (e.g., plan + debug for implementation strategy)\n' +
+        '• Results from independent agents can be synthesized into a unified response\n\n' +
+        'Each agent runs concurrently - much faster than sequential delegation. ' +
+        'Maximum 5 agents per call. Provide a synthesis_prompt to guide how results should be combined.',
       Kind.Think,
       zodToJsonSchema(schema),
       /* isOutputMarkdown */ true,
@@ -164,7 +171,9 @@ class DelegateToAgentsInvocation extends BaseToolInvocation<
   }
 
   getDescription(): string {
-    const agentNames = this.params.delegations.map((d) => d.agent_name).join(', ');
+    const agentNames = this.params.delegations
+      .map((d) => d.agent_name)
+      .join(', ');
     return `Delegating to ${this.params.delegations.length} agents in parallel: [${agentNames}]`;
   }
 
@@ -208,13 +217,16 @@ class DelegateToAgentsInvocation extends BaseToolInvocation<
           this.messageBus,
         );
 
-        const invocation = wrapper.build({ prompt: delegation.prompt } as AgentInputs);
+        const invocation = wrapper.build({
+          prompt: delegation.prompt,
+        } as AgentInputs);
         const result = await invocation.execute(signal, (output) => {
           // Individual agent output - could be forwarded with agent prefix
           if (updateOutput) {
             const prefix = `[${delegation.agent_name}] `;
             // AnsiOutput is AnsiLine[] (array of arrays), so just use string output
-            const outputStr = typeof output === 'string' ? output : JSON.stringify(output);
+            const outputStr =
+              typeof output === 'string' ? output : JSON.stringify(output);
             updateOutput(prefix + outputStr.split('\n').join(`\n${prefix}`));
           }
         });
@@ -222,7 +234,10 @@ class DelegateToAgentsInvocation extends BaseToolInvocation<
         return {
           agent_name: delegation.agent_name,
           success: !result.error,
-          result: typeof result.llmContent === 'string' ? result.llmContent : undefined,
+          result:
+            typeof result.llmContent === 'string'
+              ? result.llmContent
+              : undefined,
           error: result.error?.message,
         } as AgentExecutionResult;
       } catch (error) {

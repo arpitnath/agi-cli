@@ -246,7 +246,9 @@ export const AppContainer = (props: AppContainerProps) => {
     useState<PlanModeApprovalRequest | null>(null);
   const [isPlanMode, setIsPlanMode] = useState(false);
   const [planFilePath, setPlanFilePath] = useState<string | null>(null);
-  const [activeAgent, setActiveAgent] = useState<UIState['activeAgent']>(null);
+  const [activeAgents, setActiveAgents] = useState<UIState['activeAgents']>(
+    new Map(),
+  );
   const [permissionsDialogProps, setPermissionsDialogProps] = useState<{
     targetDirectory?: string;
   } | null>(null);
@@ -672,40 +674,45 @@ Logging in with Google... Restarting Gemini CLI to continue.
     }
 
     const startHandler = (event: AgentProgressStart) => {
-      setActiveAgent({
-        executionId: event.agentExecutionId,
-        name: event.agentName,
-        displayName: event.displayName,
-        status: event.status,
-        activity: 'other',
-        toolCallCount: 0,
-        filesAccessed: [],
-        startTime: event.startTime,
+      setActiveAgents((prev) => {
+        const next = new Map(prev);
+        next.set(event.agentExecutionId, {
+          executionId: event.agentExecutionId,
+          name: event.agentName,
+          displayName: event.displayName,
+          status: event.status,
+          activity: 'other',
+          toolCallCount: 0,
+          filesAccessed: [],
+          startTime: event.startTime,
+        });
+        return next;
       });
     };
 
     const updateHandler = (event: AgentProgressUpdate) => {
-      setActiveAgent((prev) => {
-        if (!prev || prev.executionId !== event.agentExecutionId) {
-          return prev;
-        }
-        return {
-          ...prev,
+      setActiveAgents((prev) => {
+        const agent = prev.get(event.agentExecutionId);
+        if (!agent) return prev;
+        const next = new Map(prev);
+        next.set(event.agentExecutionId, {
+          ...agent,
           status: event.status,
           activity: event.activity,
-          toolCallCount: event.toolCallCount ?? prev.toolCallCount,
-          filesAccessed: event.filesAccessed ?? prev.filesAccessed,
-        };
+          toolCallCount: event.toolCallCount ?? agent.toolCallCount,
+          filesAccessed: event.filesAccessed ?? agent.filesAccessed,
+        });
+        return next;
       });
     };
 
     const completeHandler = (event: AgentProgressComplete) => {
-      // Only clear if it's the same agent
-      setActiveAgent((prev) => {
-        if (prev && prev.executionId === event.agentExecutionId) {
-          return null;
-        }
-        return prev;
+      // Remove completed agent from the Map
+      setActiveAgents((prev) => {
+        if (!prev.has(event.agentExecutionId)) return prev;
+        const next = new Map(prev);
+        next.delete(event.agentExecutionId);
+        return next;
       });
     };
 
@@ -723,10 +730,7 @@ Logging in with Google... Restarting Gemini CLI to continue.
     );
 
     return () => {
-      messageBus.unsubscribe(
-        MessageBusType.AGENT_PROGRESS_START,
-        startHandler,
-      );
+      messageBus.unsubscribe(MessageBusType.AGENT_PROGRESS_START, startHandler);
       messageBus.unsubscribe(
         MessageBusType.AGENT_PROGRESS_UPDATE,
         updateHandler,
@@ -1735,7 +1739,7 @@ Logging in with Google... Restarting Gemini CLI to continue.
       bannerData,
       bannerVisible,
       terminalBackgroundColor: config.getTerminalBackground(),
-      activeAgent,
+      activeAgents,
     }),
     [
       isThemeDialogOpen,
@@ -1831,7 +1835,7 @@ Logging in with Google... Restarting Gemini CLI to continue.
       warningMessage,
       bannerData,
       bannerVisible,
-      activeAgent,
+      activeAgents,
       config,
     ],
   );

@@ -3,7 +3,7 @@
 # Users can override this by creating ~/.gemini/agents/debug.toml or .gemini/agents/debug.toml
 
 name = "debug"
-description = "Investigates bugs, errors, and unexpected behavior"
+description = "Investigates bugs, errors, and unexpected behavior. Complements 'review' for thorough issue analysis, or use with 'explore' to trace problems across the codebase."
 display_name = "Debug"
 
 # Tools must be defined BEFORE any [section] headers in TOML

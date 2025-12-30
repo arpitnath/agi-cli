@@ -3,7 +3,7 @@
 # Users can override this by creating ~/.gemini/agents/plan.toml or .gemini/agents/plan.toml
 
 name = "plan"
-description = "Designs implementation approaches and creates detailed plans"
+description = "Designs implementation approaches and creates detailed plans. Use with 'explore' to gather context first, or pair with 'review' to validate plan against existing patterns."
 display_name = "Plan"
 
 # Tools must be defined BEFORE any [section] headers in TOML

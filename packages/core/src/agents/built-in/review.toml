@@ -3,7 +3,7 @@
 # Users can override this by creating ~/.gemini/agents/review.toml or .gemini/agents/review.toml
 
 name = "review"
-description = "Reviews code for quality, security, and best practices"
+description = "Reviews code for quality, security, and best practices. Pairs well with 'explore' to first find code then review it, or with 'debug' for comprehensive issue analysis."
 display_name = "Review"
 
 # Tools must be defined BEFORE any [section] headers in TOML
