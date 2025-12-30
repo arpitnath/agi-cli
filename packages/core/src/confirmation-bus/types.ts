@@ -21,6 +21,10 @@ export enum MessageBusType {
   PLAN_MODE_STATE_CHANGE = 'plan-mode-state-change',
   PLAN_MODE_APPROVAL_REQUEST = 'plan-mode-approval-request',
   PLAN_MODE_APPROVAL_RESPONSE = 'plan-mode-approval-response',
+  // Agent progress events
+  AGENT_PROGRESS_START = 'agent-progress-start',
+  AGENT_PROGRESS_UPDATE = 'agent-progress-update',
+  AGENT_PROGRESS_COMPLETE = 'agent-progress-complete',
 }
 
 export interface ToolConfirmationRequest {
@@ -134,6 +138,64 @@ export interface PlanModeApprovalResponse {
   reason?: string;
 }
 
+/**
+ * Agent progress events for real-time UI updates during sub-agent execution.
+ */
+
+export interface AgentProgressStart {
+  type: MessageBusType.AGENT_PROGRESS_START;
+  /** Unique ID for this agent execution */
+  agentExecutionId: string;
+  /** Agent name (e.g., "explore", "plan") */
+  agentName: string;
+  /** Display name (e.g., "Explore") */
+  displayName?: string;
+  /** Brief description of what the agent is doing */
+  status: string;
+  /** Timestamp when agent started */
+  startTime: number;
+}
+
+export interface AgentProgressUpdate {
+  type: MessageBusType.AGENT_PROGRESS_UPDATE;
+  /** Matches the agentExecutionId from start event */
+  agentExecutionId: string;
+  /** Agent name */
+  agentName: string;
+  /** Current status message */
+  status: string;
+  /** Type of activity: tool_use, thinking, searching, etc. */
+  activity: 'tool_use' | 'thinking' | 'searching' | 'writing' | 'other';
+  /** Details about the activity (e.g., tool name, file path) */
+  details?: string;
+  /** Number of tool calls made so far */
+  toolCallCount?: number;
+  /** Current turn number */
+  turnCount?: number;
+  /** Files accessed so far */
+  filesAccessed?: string[];
+}
+
+export interface AgentProgressComplete {
+  type: MessageBusType.AGENT_PROGRESS_COMPLETE;
+  /** Matches the agentExecutionId from start event */
+  agentExecutionId: string;
+  /** Agent name */
+  agentName: string;
+  /** Final status (success, error, timeout, etc.) */
+  status: 'success' | 'error' | 'timeout' | 'aborted' | 'cycle_detected';
+  /** Termination reason */
+  terminateReason?: string;
+  /** Execution time in milliseconds */
+  executionTimeMs: number;
+  /** Total tool calls made */
+  toolCallCount: number;
+  /** Total turns */
+  turnCount: number;
+  /** Brief result summary (for display) */
+  resultSummary?: string;
+}
+
 export type Message =
   | ToolConfirmationRequest
   | ToolConfirmationResponse
@@ -148,4 +210,7 @@ export type Message =
   | AskUserQuestionResponse
   | PlanModeStateChange
   | PlanModeApprovalRequest
-  | PlanModeApprovalResponse;
+  | PlanModeApprovalResponse
+  | AgentProgressStart
+  | AgentProgressUpdate
+  | AgentProgressComplete;

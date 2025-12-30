@@ -252,13 +252,33 @@ export type HistoryItemMcpStatus = HistoryItemBase & {
 export type HistoryItemHooksList = HistoryItemBase & {
   type: 'hooks_list';
   hooks: Array<{
-    config: { command?: string; type: string; timeout?: number };
+    config: {
+      command?: string;
+      type: string;
+      name?: string;
+      description?: string;
+      timeout?: number;
+    };
     source: string;
     eventName: string;
     matcher?: string;
     sequential?: boolean;
     enabled: boolean;
   }>;
+};
+
+export interface AgentListItem {
+  name: string;
+  displayName?: string;
+  description: string;
+  source: 'built-in' | 'user' | 'project';
+  tools: string[];
+}
+
+export type HistoryItemAgentsList = HistoryItemBase & {
+  type: 'agents_list';
+  agents: AgentListItem[];
+  showDescriptions: boolean;
 };
 
 // Using Omit<HistoryItem, 'id'> seems to have some issues with typescript's
@@ -286,7 +306,8 @@ export type HistoryItemWithoutId =
   | HistoryItemToolsList
   | HistoryItemMcpStatus
   | HistoryItemChatList
-  | HistoryItemHooksList;
+  | HistoryItemHooksList
+  | HistoryItemAgentsList;
 
 export type HistoryItem = HistoryItemWithoutId & { id: number };
 
@@ -309,6 +330,7 @@ export enum MessageType {
   MCP_STATUS = 'mcp_status',
   CHAT_LIST = 'chat_list',
   HOOKS_LIST = 'hooks_list',
+  AGENTS_LIST = 'agents_list',
 }
 
 // Simplified message structure for internal feedback

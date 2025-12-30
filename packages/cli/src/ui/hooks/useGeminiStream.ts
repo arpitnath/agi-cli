@@ -855,6 +855,16 @@ export const useGeminiStream = (
           case ServerGeminiEventType.InvalidStream:
             // Will add the missing logic later
             break;
+          case ServerGeminiEventType.AutoRouted:
+            // Clean UI without emojis - matches Claude Code style
+            addItem(
+              {
+                type: MessageType.INFO,
+                text: `Routing to ${event.value.agentName} agent`,
+              },
+              userMessageTimestamp,
+            );
+            break;
           default: {
             // enforces exhaustive switch-case
             const unreachable: never = event;

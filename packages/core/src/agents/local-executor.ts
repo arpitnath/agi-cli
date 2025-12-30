@@ -115,6 +115,10 @@ export class LocalAgentExecutor<TOutput extends z.ZodTypeAny> {
           const toolFromParent = parentToolRegistry.getTool(toolRef);
           if (toolFromParent) {
             agentToolRegistry.registerTool(toolFromParent);
+          } else {
+            debugLogger.warn(
+              `[LocalAgentExecutor] Tool '${toolRef}' not found in parent registry for agent '${definition.name}'`,
+            );
           }
         } else if (
           typeof toolRef === 'object' &&
@@ -984,7 +988,6 @@ export class LocalAgentExecutor<TOutput extends z.ZodTypeAny> {
       // Handle standard tools
       if (!allowedToolNames.has(functionCall.name as string)) {
         const error = `Unauthorized tool call: '${functionCall.name}' is not available to this agent.`;
-
         debugLogger.warn(`[LocalAgentExecutor] Blocked call: ${error}`);
 
         syncResponseParts.push({
@@ -1095,9 +1098,9 @@ export class LocalAgentExecutor<TOutput extends z.ZodTypeAny> {
         }
       }
       // Add schemas from tools that were registered by name.
-      toolsList.push(
-        ...this.toolRegistry.getFunctionDeclarationsFiltered(toolNamesToLoad),
-      );
+      const declarations =
+        this.toolRegistry.getFunctionDeclarationsFiltered(toolNamesToLoad);
+      toolsList.push(...declarations);
     }
 
     // Always inject complete_task.

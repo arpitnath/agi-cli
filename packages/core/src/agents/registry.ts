@@ -20,6 +20,15 @@ import {
   isPreviewModel,
 } from '../config/models.js';
 import type { ModelConfigAlias } from '../services/modelConfigService.js';
+import * as path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+/**
+ * Built-in agent names that ship with the package.
+ * These are loaded from TOML files in the built-in directory.
+ */
+export const BUILT_IN_AGENT_NAMES = ['explore', 'plan', 'review', 'debug'] as const;
+export type BuiltInAgentName = (typeof BUILT_IN_AGENT_NAMES)[number];
 
 /**
  * Returns the model config alias for a given agent definition.
@@ -42,8 +51,17 @@ export class AgentRegistry {
 
   /**
    * Discovers and loads agents.
+   * Loading order (later loads override earlier):
+   * 1. Built-in TOML agents (from package)
+   * 2. Built-in TypeScript agents (codebase-investigator, introspection)
+   * 3. User-level agents (~/.gemini/agents/)
+   * 4. Project-level agents (.gemini/agents/)
    */
   async initialize(): Promise<void> {
+    // Load built-in TOML agents first (lowest priority, can be overridden)
+    await this.loadBuiltInTomlAgents();
+
+    // Load built-in TypeScript agents
     this.loadBuiltInAgents();
 
     coreEvents.on(CoreEvent.ModelChanged, () => {
@@ -97,6 +115,36 @@ export class AgentRegistry {
     }
   }
 
+  /**
+   * Loads built-in TOML agents from the package's built-in directory.
+   * These agents (explore, plan, review, debug) ship with the package
+   * and can be overridden by user or project agents with the same name.
+   */
+  private async loadBuiltInTomlAgents(): Promise<void> {
+    // Get the directory where this module is located
+    const currentFilePath = fileURLToPath(import.meta.url);
+    const currentDir = path.dirname(currentFilePath);
+    const builtInDir = path.join(currentDir, 'built-in');
+
+    const builtInAgents = await loadAgentsFromDirectory(builtInDir);
+
+    for (const error of builtInAgents.errors) {
+      // Built-in agent errors are more serious, log as warnings
+      debugLogger.warn(
+        `[AgentRegistry] Error loading built-in agent: ${error.message}`,
+      );
+    }
+
+    for (const agent of builtInAgents.agents) {
+      this.registerAgent(agent);
+      if (this.config.getDebugMode()) {
+        debugLogger.log(
+          `[AgentRegistry] Loaded built-in agent: ${agent.name}`,
+        );
+      }
+    }
+  }
+
   private loadBuiltInAgents(): void {
     const investigatorSettings = this.config.getCodebaseInvestigatorSettings();
     const introspectionSettings = this.config.getIntrospectionAgentSettings();
@@ -145,7 +193,11 @@ export class AgentRegistry {
   }
 
   private refreshAgents(): void {
+    // Re-register built-in TOML agents (async but we don't wait)
+    void this.loadBuiltInTomlAgents();
+    // Re-register built-in TypeScript agents
     this.loadBuiltInAgents();
+    // Re-register all agents to update model configs
     for (const agent of this.agents.values()) {
       this.registerAgent(agent);
     }
@@ -225,6 +277,31 @@ export class AgentRegistry {
    */
   getAllAgentNames(): string[] {
     return Array.from(this.agents.keys());
+  }
+
+  /**
+   * Checks if an agent name is a built-in agent.
+   */
+  isBuiltInAgent(name: string): boolean {
+    return (BUILT_IN_AGENT_NAMES as readonly string[]).includes(name);
+  }
+
+  /**
+   * Returns built-in agents (explore, plan, review, debug).
+   */
+  getBuiltInAgents(): AgentDefinition[] {
+    return Array.from(this.agents.values()).filter((agent) =>
+      this.isBuiltInAgent(agent.name),
+    );
+  }
+
+  /**
+   * Returns custom agents (user-defined, not built-in).
+   */
+  getCustomAgents(): AgentDefinition[] {
+    return Array.from(this.agents.values()).filter(
+      (agent) => !this.isBuiltInAgent(agent.name),
+    );
   }
 
   /**

@@ -29,6 +29,7 @@ import { ApprovalMode } from '@google/gemini-cli-core';
 import { StreamingState } from '../types.js';
 import { ConfigInitDisplay } from '../components/ConfigInitDisplay.js';
 import { TodoTray } from './messages/Todo.js';
+import { AgentProgress } from './AgentProgress.js';
 
 export const Composer = () => {
   const config = useConfig();
@@ -71,6 +72,9 @@ export const Composer = () => {
           elapsedTime={uiState.elapsedTime}
         />
       )}
+
+      {/* Show agent progress when a sub-agent is running */}
+      <AgentProgress />
 
       {(!uiState.slashCommands || !uiState.isConfigInitialized) && (
         <ConfigInitDisplay />

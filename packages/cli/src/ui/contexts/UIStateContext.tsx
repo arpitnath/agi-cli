@@ -144,6 +144,17 @@ export interface UIState {
   bannerVisible: boolean;
   customDialog: React.ReactNode | null;
   terminalBackgroundColor: TerminalBackgroundColor;
+  // Agent progress state
+  activeAgent: {
+    executionId: string;
+    name: string;
+    displayName?: string;
+    status: string;
+    activity: 'tool_use' | 'thinking' | 'searching' | 'writing' | 'other';
+    toolCallCount: number;
+    filesAccessed: string[];
+    startTime: number;
+  } | null;
 }
 
 export const UIStateContext = createContext<UIState | null>(null);

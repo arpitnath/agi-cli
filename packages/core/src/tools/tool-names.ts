@@ -24,6 +24,7 @@ export const GET_INTERNAL_DOCS_TOOL_NAME = 'get_internal_docs';
 export const ASK_USER_QUESTION_TOOL_NAME = 'ask_user_question';
 export const EDIT_TOOL_NAMES = new Set([EDIT_TOOL_NAME, WRITE_FILE_TOOL_NAME]);
 export const DELEGATE_TO_AGENT_TOOL_NAME = 'delegate_to_agent';
+export const DELEGATE_TO_AGENTS_TOOL_NAME = 'delegate_to_agents';
 export const ENTER_PLAN_MODE_TOOL_NAME = 'enter_plan_mode';
 export const EXIT_PLAN_MODE_TOOL_NAME = 'exit_plan_mode';
 
@@ -81,6 +82,7 @@ export const ALL_BUILTIN_TOOL_NAMES = [
   MEMORY_TOOL_NAME,
   ASK_USER_QUESTION_TOOL_NAME,
   DELEGATE_TO_AGENT_TOOL_NAME,
+  DELEGATE_TO_AGENTS_TOOL_NAME,
   ENTER_PLAN_MODE_TOOL_NAME,
   EXIT_PLAN_MODE_TOOL_NAME,
 ] as const;

@@ -33,6 +33,9 @@ import {
   type AskUserQuestionRequest,
   type PlanModeApprovalRequest,
   type PlanModeStateChange,
+  type AgentProgressStart,
+  type AgentProgressUpdate,
+  type AgentProgressComplete,
   MessageBusType,
   type Config,
   type IdeInfo,
@@ -243,6 +246,7 @@ export const AppContainer = (props: AppContainerProps) => {
     useState<PlanModeApprovalRequest | null>(null);
   const [isPlanMode, setIsPlanMode] = useState(false);
   const [planFilePath, setPlanFilePath] = useState<string | null>(null);
+  const [activeAgent, setActiveAgent] = useState<UIState['activeAgent']>(null);
   const [permissionsDialogProps, setPermissionsDialogProps] = useState<{
     targetDirectory?: string;
   } | null>(null);
@@ -656,6 +660,80 @@ Logging in with Google... Restarting Gemini CLI to continue.
       messageBus.unsubscribe(
         MessageBusType.PLAN_MODE_STATE_CHANGE,
         stateHandler,
+      );
+    };
+  }, [config]);
+
+  // Subscribe to AGENT_PROGRESS events from Core
+  useEffect(() => {
+    const messageBus = config.getMessageBus();
+    if (!messageBus) {
+      return;
+    }
+
+    const startHandler = (event: AgentProgressStart) => {
+      setActiveAgent({
+        executionId: event.agentExecutionId,
+        name: event.agentName,
+        displayName: event.displayName,
+        status: event.status,
+        activity: 'other',
+        toolCallCount: 0,
+        filesAccessed: [],
+        startTime: event.startTime,
+      });
+    };
+
+    const updateHandler = (event: AgentProgressUpdate) => {
+      setActiveAgent((prev) => {
+        if (!prev || prev.executionId !== event.agentExecutionId) {
+          return prev;
+        }
+        return {
+          ...prev,
+          status: event.status,
+          activity: event.activity,
+          toolCallCount: event.toolCallCount ?? prev.toolCallCount,
+          filesAccessed: event.filesAccessed ?? prev.filesAccessed,
+        };
+      });
+    };
+
+    const completeHandler = (event: AgentProgressComplete) => {
+      // Only clear if it's the same agent
+      setActiveAgent((prev) => {
+        if (prev && prev.executionId === event.agentExecutionId) {
+          return null;
+        }
+        return prev;
+      });
+    };
+
+    messageBus.subscribe<AgentProgressStart>(
+      MessageBusType.AGENT_PROGRESS_START,
+      startHandler,
+    );
+    messageBus.subscribe<AgentProgressUpdate>(
+      MessageBusType.AGENT_PROGRESS_UPDATE,
+      updateHandler,
+    );
+    messageBus.subscribe<AgentProgressComplete>(
+      MessageBusType.AGENT_PROGRESS_COMPLETE,
+      completeHandler,
+    );
+
+    return () => {
+      messageBus.unsubscribe(
+        MessageBusType.AGENT_PROGRESS_START,
+        startHandler,
+      );
+      messageBus.unsubscribe(
+        MessageBusType.AGENT_PROGRESS_UPDATE,
+        updateHandler,
+      );
+      messageBus.unsubscribe(
+        MessageBusType.AGENT_PROGRESS_COMPLETE,
+        completeHandler,
       );
     };
   }, [config]);
@@ -1657,6 +1735,7 @@ Logging in with Google... Restarting Gemini CLI to continue.
       bannerData,
       bannerVisible,
       terminalBackgroundColor: config.getTerminalBackground(),
+      activeAgent,
     }),
     [
       isThemeDialogOpen,
@@ -1752,6 +1831,7 @@ Logging in with Google... Restarting Gemini CLI to continue.
       warningMessage,
       bannerData,
       bannerVisible,
+      activeAgent,
       config,
     ],
   );

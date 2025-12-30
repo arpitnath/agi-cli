@@ -21,6 +21,7 @@ import { ResourceRegistry } from '../resources/resource-registry.js';
 import { ToolRegistry } from '../tools/tool-registry.js';
 import { LSTool } from '../tools/ls.js';
 import { ReadFileTool } from '../tools/read-file.js';
+import { ReadManyFilesTool } from '../tools/read-many-files.js';
 import { GrepTool } from '../tools/grep.js';
 import { canUseRipgrep, RipGrepTool } from '../tools/ripGrep.js';
 import { GlobTool } from '../tools/glob.js';
@@ -93,6 +94,7 @@ import type { Experiments } from '../code_assist/experiments/experiments.js';
 import { AgentRegistry } from '../agents/registry.js';
 import { setGlobalProxy } from '../utils/fetch.js';
 import { DelegateToAgentTool } from '../agents/delegate-to-agent-tool.js';
+import { DelegateToAgentsTool } from '../agents/delegate-to-agents-tool.js';
 import { DELEGATE_TO_AGENT_TOOL_NAME } from '../tools/tool-names.js';
 import { getExperiments } from '../code_assist/experiments/experiments.js';
 import { ExperimentFlags } from '../code_assist/experiments/flagNames.js';
@@ -336,6 +338,7 @@ export interface ConfigParameters {
   };
   previewFeatures?: boolean;
   enableAgents?: boolean;
+  autoRoutingEnabled?: boolean;
   experimentalJitContext?: boolean;
   onModelChange?: (model: string) => void;
 }
@@ -466,6 +469,7 @@ export class Config {
   private readonly onModelChange: ((model: string) => void) | undefined;
 
   private readonly enableAgents: boolean;
+  private readonly autoRoutingEnabled: boolean;
 
   private readonly experimentalJitContext: boolean;
   private contextManager?: ContextManager;
@@ -533,6 +537,7 @@ export class Config {
     this.model = params.model;
     this._activeModel = params.model;
     this.enableAgents = params.enableAgents ?? false;
+    this.autoRoutingEnabled = params.autoRoutingEnabled ?? false;
     this.experimentalJitContext = params.experimentalJitContext ?? false;
     this.modelAvailabilityService = new ModelAvailabilityService();
     this.previewFeatures = params.previewFeatures ?? undefined;
@@ -1354,6 +1359,10 @@ export class Config {
     return this.enableAgents;
   }
 
+  getAutoRoutingEnabled(): boolean {
+    return this.autoRoutingEnabled;
+  }
+
   getNoBrowser(): boolean {
     return this.noBrowser;
   }
@@ -1674,6 +1683,7 @@ export class Config {
 
     registerCoreTool(LSTool, this);
     registerCoreTool(ReadFileTool, this);
+    registerCoreTool(ReadManyFilesTool, this);
 
     if (this.getUseRipgrep()) {
       let useRipgrep = false;
@@ -1732,6 +1742,14 @@ export class Config {
           messageBusEnabled ? this.getMessageBus() : undefined,
         );
         registry.registerTool(delegateTool);
+
+        // Register DelegateToAgentsTool for parallel agent execution
+        const delegateParallelTool = new DelegateToAgentsTool(
+          this.agentRegistry,
+          this,
+          messageBusEnabled ? this.getMessageBus() : undefined,
+        );
+        registry.registerTool(delegateParallelTool);
       }
     }
 
