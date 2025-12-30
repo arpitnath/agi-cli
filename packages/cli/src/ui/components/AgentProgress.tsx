@@ -66,7 +66,7 @@ export const AgentProgress: React.FC = () => {
       <Box flexDirection="row">
         <Text>Running </Text>
         <Text bold>{agents.length}</Text>
-        <Text> agent{agents.length > 1 ? 's' : ''}...</Text>
+        <Text> agent{agents.length > 1 ? 's' : ''}</Text>
         <Text dimColor> (esc to cancel)</Text>
       </Box>
 
@@ -92,7 +92,7 @@ export const AgentProgress: React.FC = () => {
             {/* Status line with tree continuation */}
             <Box flexDirection="row">
               <Text dimColor>{isLast ? '   └─ ' : '│  └─ '}</Text>
-              <CliSpinner type="dots" />
+              <CliSpinner type="toggle9" />
               <Text> </Text>
               <Text>{agent.status || 'Working'}</Text>
               <Text dimColor>

@@ -224,7 +224,7 @@ ${output.result}
       agentExecutionId,
       agentName: this.definition.name,
       displayName: this.definition.displayName,
-      status: `Starting ${this.definition.displayName || this.definition.name}...`,
+      status: 'Launched',
       startTime,
     };
 
