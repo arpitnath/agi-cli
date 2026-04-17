@@ -21,8 +21,45 @@ export const READ_FILE_TOOL_NAME = 'read_file';
 export const LS_TOOL_NAME = 'list_directory';
 export const MEMORY_TOOL_NAME = 'save_memory';
 export const GET_INTERNAL_DOCS_TOOL_NAME = 'get_internal_docs';
+export const ASK_USER_QUESTION_TOOL_NAME = 'ask_user_question';
 export const EDIT_TOOL_NAMES = new Set([EDIT_TOOL_NAME, WRITE_FILE_TOOL_NAME]);
 export const DELEGATE_TO_AGENT_TOOL_NAME = 'delegate_to_agent';
+export const DELEGATE_TO_AGENTS_TOOL_NAME = 'delegate_to_agents';
+export const ENTER_PLAN_MODE_TOOL_NAME = 'enter_plan_mode';
+export const EXIT_PLAN_MODE_TOOL_NAME = 'exit_plan_mode';
+
+/**
+ * Working modes for the CLI agent.
+ * Extensible to support future modes like 'brainstorm', 'research', etc.
+ */
+export enum WorkingMode {
+  /** Default mode - all tools available */
+  DEFAULT = 'default',
+  /** Plan mode - read-only exploration, blocked mutator tools */
+  PLAN = 'plan',
+  // Future modes can be added here:
+  // BRAINSTORM = 'brainstorm',
+  // RESEARCH = 'research',
+}
+
+/**
+ * Human-readable descriptions for each working mode.
+ */
+export const WORKING_MODE_DESCRIPTIONS: Record<WorkingMode, string> = {
+  [WorkingMode.DEFAULT]: 'All tools available for implementation',
+  [WorkingMode.PLAN]: 'Read-only exploration mode for planning',
+};
+
+/**
+ * Tools that are BLOCKED when in Plan Mode.
+ * These are mutator tools that modify files or execute commands.
+ */
+export const PLAN_MODE_BLOCKED_TOOLS = new Set([
+  WRITE_FILE_TOOL_NAME,
+  EDIT_TOOL_NAME,
+  SHELL_TOOL_NAME,
+  MEMORY_TOOL_NAME,
+]);
 
 /** Prefix used for tools discovered via the toolDiscoveryCommand. */
 export const DISCOVERED_TOOL_PREFIX = 'discovered_tool_';
@@ -43,7 +80,11 @@ export const ALL_BUILTIN_TOOL_NAMES = [
   READ_FILE_TOOL_NAME,
   LS_TOOL_NAME,
   MEMORY_TOOL_NAME,
+  ASK_USER_QUESTION_TOOL_NAME,
   DELEGATE_TO_AGENT_TOOL_NAME,
+  DELEGATE_TO_AGENTS_TOOL_NAME,
+  ENTER_PLAN_MODE_TOOL_NAME,
+  EXIT_PLAN_MODE_TOOL_NAME,
 ] as const;
 
 /**

@@ -161,6 +161,8 @@ const mockUIActions: UIActions = {
   handleFolderTrustSelect: vi.fn(),
   setConstrainHeight: vi.fn(),
   onEscapePromptChange: vi.fn(),
+  handleAskUserQuestionComplete: vi.fn(),
+  handlePlanModeApprovalComplete: vi.fn(),
   refreshStatic: vi.fn(),
   handleFinalSubmit: vi.fn(),
   handleClearScreen: vi.fn(),

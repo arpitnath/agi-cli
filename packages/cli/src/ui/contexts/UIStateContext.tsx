@@ -23,6 +23,8 @@ import type {
   UserTierId,
   IdeInfo,
   FallbackIntent,
+  AskUserQuestionRequest,
+  PlanModeApprovalRequest,
 } from '@google/gemini-cli-core';
 import type { DOMElement } from 'ink';
 import type { SessionStatsState } from '../contexts/SessionContext.js';
@@ -71,6 +73,10 @@ export interface UIState {
   confirmationRequest: ConfirmationRequest | null;
   confirmUpdateExtensionRequests: ConfirmationRequest[];
   loopDetectionConfirmationRequest: LoopDetectionConfirmationRequest | null;
+  askUserQuestionRequest: AskUserQuestionRequest | null;
+  planModeApprovalRequest: PlanModeApprovalRequest | null;
+  isPlanMode: boolean;
+  planFilePath: string | null;
   geminiMdFileCount: number;
   streamingState: StreamingState;
   initError: string | null;
@@ -138,6 +144,20 @@ export interface UIState {
   bannerVisible: boolean;
   customDialog: React.ReactNode | null;
   terminalBackgroundColor: TerminalBackgroundColor;
+  // Agent progress state - Map keyed by executionId for parallel agent support
+  activeAgents: Map<
+    string,
+    {
+      executionId: string;
+      name: string;
+      displayName?: string;
+      status: string;
+      activity: 'tool_use' | 'thinking' | 'searching' | 'writing' | 'other';
+      toolCallCount: number;
+      filesAccessed: string[];
+      startTime: number;
+    }
+  >;
 }
 
 export const UIStateContext = createContext<UIState | null>(null);

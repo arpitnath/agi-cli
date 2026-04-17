@@ -17,6 +17,7 @@ import {
   WRITE_FILE_TOOL_NAME,
   WRITE_TODOS_TOOL_NAME,
   DELEGATE_TO_AGENT_TOOL_NAME,
+  DELEGATE_TO_AGENTS_TOOL_NAME,
 } from '../tools/tool-names.js';
 import process from 'node:process';
 import { isGitRepository } from '../utils/gitUtils.js';
@@ -258,6 +259,10 @@ IT IS CRITICAL TO FOLLOW THESE GUIDELINES TO AVOID EXCESSIVE TOKEN CONSUMPTION.
 
 ## Tool Usage
 - **Parallelism:** Execute multiple independent tool calls in parallel when feasible (i.e. searching the codebase).
+- **Agent Delegation:** Use '${DELEGATE_TO_AGENT_TOOL_NAME}' to delegate tasks to specialized agents. When a task would benefit from **multiple perspectives** (e.g., architecture + security analysis) or **parallel exploration** (e.g., exploring multiple areas of the codebase simultaneously), use '${DELEGATE_TO_AGENTS_TOOL_NAME}' to run agents concurrently. Good candidates for parallel delegation:
+  - Comprehensive analysis requiring different viewpoints (explore + review, plan + debug)
+  - Multi-area codebase exploration ("search auth AND payment modules")
+  - Tasks where agents can work independently and results can be synthesized
 - **Command Execution:** Use the '${SHELL_TOOL_NAME}' tool for running shell commands, remembering the safety rule to explain modifying commands first.
 ${(function () {
   if (interactiveMode) {

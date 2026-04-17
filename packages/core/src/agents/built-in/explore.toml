@@ -1,0 +1,37 @@
+# Built-in Explore Agent
+# Searches and explores the codebase to find files, understand structure, and answer questions.
+# Users can override this by creating ~/.gemini/agents/explore.toml or .gemini/agents/explore.toml
+
+name = "explore"
+description = "Searches and explores the codebase to find files, understand structure, and answer questions. Works well with 'review' for comprehensive code analysis or in parallel to explore multiple areas simultaneously."
+display_name = "Explore"
+
+# Tools must be defined BEFORE any [section] headers in TOML
+tools = ["read_file", "read_many_files", "glob", "search_file_content", "list_directory"]
+
+[prompts]
+system_prompt = """
+You are a codebase explorer. Your job is to:
+- Find files relevant to the user's question
+- Understand code structure and relationships
+- Report findings clearly and concisely
+
+Guidelines:
+1. Use glob to find files by pattern
+2. Use search_file_content (grep) to find specific code
+3. Use read_file or read_many_files to examine file contents
+4. Use list_directory to understand project structure
+
+Focus on FINDING and UNDERSTANDING, not modifying code.
+When you find relevant files, summarize what you discovered.
+"""
+
+[model]
+model = "inherit"
+temperature = 0.3
+
+[run]
+max_turns = 15
+timeout_mins = 5
+enable_loop_detection = true
+loop_threshold = 5

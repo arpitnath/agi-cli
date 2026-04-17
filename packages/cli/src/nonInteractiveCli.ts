@@ -345,6 +345,15 @@ export async function runNonInteractive({
                 message: 'Maximum session turns exceeded',
               });
             }
+          } else if (event.type === GeminiEventType.AutoRouted) {
+            if (streamFormatter) {
+              streamFormatter.emitEvent({
+                type: JsonStreamEventType.MESSAGE,
+                timestamp: new Date().toISOString(),
+                role: 'assistant',
+                content: `Routing to ${event.value.agentName} agent`,
+              });
+            }
           } else if (event.type === GeminiEventType.Error) {
             throw event.value.error;
           }

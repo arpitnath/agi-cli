@@ -15,6 +15,19 @@ export * from './policy/types.js';
 export * from './policy/policy-engine.js';
 export * from './policy/toml-loader.js';
 export * from './policy/config.js';
+export {
+  MessageBusType,
+  type Question,
+  type QuestionOption,
+  type AskUserQuestionRequest,
+  type AskUserQuestionResponse,
+  type PlanModeApprovalRequest,
+  type PlanModeApprovalResponse,
+  type PlanModeStateChange,
+  type AgentProgressStart,
+  type AgentProgressUpdate,
+  type AgentProgressComplete,
+} from './confirmation-bus/types.js';
 export * from './confirmation-bus/types.js';
 export * from './confirmation-bus/message-bus.js';
 
@@ -131,6 +144,22 @@ export * from './tools/read-many-files.js';
 export * from './tools/mcp-client.js';
 export * from './tools/mcp-tool.js';
 export * from './tools/write-todos.js';
+
+// Export agent logic
+export {
+  AgentRegistry,
+  getModelConfigAlias,
+  BUILT_IN_AGENT_NAMES,
+  type BuiltInAgentName,
+} from './agents/registry.js';
+export type { AgentDefinition, AgentTerminateMode } from './agents/types.js';
+export {
+  routeToAgent,
+  analyzePrompt,
+  explainRouting,
+  isBuiltInAgentName,
+  type RoutingResult,
+} from './agents/task-router.js';
 
 // MCP OAuth
 export { MCPOAuthProvider } from './mcp/oauth-provider.js';

@@ -30,6 +30,13 @@ import {
 import { MessageType, StreamingState } from './types.js';
 import {
   type EditorType,
+  type AskUserQuestionRequest,
+  type PlanModeApprovalRequest,
+  type PlanModeStateChange,
+  type AgentProgressStart,
+  type AgentProgressUpdate,
+  type AgentProgressComplete,
+  MessageBusType,
   type Config,
   type IdeInfo,
   type IdeContext,
@@ -233,6 +240,15 @@ export const AppContainer = (props: AppContainerProps) => {
   );
 
   const [isPermissionsDialogOpen, setPermissionsDialogOpen] = useState(false);
+  const [askUserQuestionRequest, setAskUserQuestionRequest] =
+    useState<AskUserQuestionRequest | null>(null);
+  const [planModeApprovalRequest, setPlanModeApprovalRequest] =
+    useState<PlanModeApprovalRequest | null>(null);
+  const [isPlanMode, setIsPlanMode] = useState(false);
+  const [planFilePath, setPlanFilePath] = useState<string | null>(null);
+  const [activeAgents, setActiveAgents] = useState<UIState['activeAgents']>(
+    new Map(),
+  );
   const [permissionsDialogProps, setPermissionsDialogProps] = useState<{
     targetDirectory?: string;
   } | null>(null);
@@ -541,6 +557,190 @@ Logging in with Google... Restarting Gemini CLI to continue.
     // Go back to auth method selection
     setAuthState(AuthState.Updating);
   }, [setAuthState]);
+
+  const handleAskUserQuestionComplete = useCallback(
+    (answers: Record<string, string | string[]>) => {
+      const messageBus = config.getMessageBus();
+      if (!messageBus || !askUserQuestionRequest) {
+        return;
+      }
+
+      void messageBus.publish({
+        type: MessageBusType.ASK_USER_QUESTION_RESPONSE,
+        correlationId: askUserQuestionRequest.correlationId,
+        answers,
+      });
+
+      setAskUserQuestionRequest(null);
+    },
+    [config, askUserQuestionRequest],
+  );
+
+  // Subscribe to ASK_USER_QUESTION requests from Core
+  useEffect(() => {
+    const messageBus = config.getMessageBus();
+    if (!messageBus) {
+      return;
+    }
+
+    const handler = (request: AskUserQuestionRequest) => {
+      setAskUserQuestionRequest(request);
+    };
+
+    messageBus.subscribe<AskUserQuestionRequest>(
+      MessageBusType.ASK_USER_QUESTION_REQUEST,
+      handler,
+    );
+
+    return () => {
+      messageBus.unsubscribe(MessageBusType.ASK_USER_QUESTION_REQUEST, handler);
+    };
+  }, [config]);
+
+  // Handler for plan mode approval completion
+  const handlePlanModeApprovalComplete = useCallback(
+    (approved: boolean, reason?: string) => {
+      const messageBus = config.getMessageBus();
+      if (!messageBus || !planModeApprovalRequest) {
+        return;
+      }
+
+      void messageBus.publish({
+        type: MessageBusType.PLAN_MODE_APPROVAL_RESPONSE,
+        correlationId: planModeApprovalRequest.correlationId,
+        approved,
+        reason,
+      });
+
+      setPlanModeApprovalRequest(null);
+    },
+    [config, planModeApprovalRequest],
+  );
+
+  // Subscribe to PLAN_MODE_APPROVAL_REQUEST from Core
+  useEffect(() => {
+    const messageBus = config.getMessageBus();
+    if (!messageBus) {
+      return;
+    }
+
+    const approvalHandler = (request: PlanModeApprovalRequest) => {
+      setPlanModeApprovalRequest(request);
+    };
+
+    messageBus.subscribe<PlanModeApprovalRequest>(
+      MessageBusType.PLAN_MODE_APPROVAL_REQUEST,
+      approvalHandler,
+    );
+
+    return () => {
+      messageBus.unsubscribe(
+        MessageBusType.PLAN_MODE_APPROVAL_REQUEST,
+        approvalHandler,
+      );
+    };
+  }, [config]);
+
+  // Subscribe to PLAN_MODE_STATE_CHANGE from Core
+  useEffect(() => {
+    const messageBus = config.getMessageBus();
+    if (!messageBus) {
+      return;
+    }
+
+    const stateHandler = (message: PlanModeStateChange) => {
+      setIsPlanMode(message.isPlanMode);
+      setPlanFilePath(message.planFilePath ?? null);
+    };
+
+    messageBus.subscribe<PlanModeStateChange>(
+      MessageBusType.PLAN_MODE_STATE_CHANGE,
+      stateHandler,
+    );
+
+    return () => {
+      messageBus.unsubscribe(
+        MessageBusType.PLAN_MODE_STATE_CHANGE,
+        stateHandler,
+      );
+    };
+  }, [config]);
+
+  // Subscribe to AGENT_PROGRESS events from Core
+  useEffect(() => {
+    const messageBus = config.getMessageBus();
+    if (!messageBus) {
+      return;
+    }
+
+    const startHandler = (event: AgentProgressStart) => {
+      setActiveAgents((prev) => {
+        const next = new Map(prev);
+        next.set(event.agentExecutionId, {
+          executionId: event.agentExecutionId,
+          name: event.agentName,
+          displayName: event.displayName,
+          status: event.status,
+          activity: 'other',
+          toolCallCount: 0,
+          filesAccessed: [],
+          startTime: event.startTime,
+        });
+        return next;
+      });
+    };
+
+    const updateHandler = (event: AgentProgressUpdate) => {
+      setActiveAgents((prev) => {
+        const agent = prev.get(event.agentExecutionId);
+        if (!agent) return prev;
+        const next = new Map(prev);
+        next.set(event.agentExecutionId, {
+          ...agent,
+          status: event.status,
+          activity: event.activity,
+          toolCallCount: event.toolCallCount ?? agent.toolCallCount,
+          filesAccessed: event.filesAccessed ?? agent.filesAccessed,
+        });
+        return next;
+      });
+    };
+
+    const completeHandler = (event: AgentProgressComplete) => {
+      // Remove completed agent from the Map
+      setActiveAgents((prev) => {
+        if (!prev.has(event.agentExecutionId)) return prev;
+        const next = new Map(prev);
+        next.delete(event.agentExecutionId);
+        return next;
+      });
+    };
+
+    messageBus.subscribe<AgentProgressStart>(
+      MessageBusType.AGENT_PROGRESS_START,
+      startHandler,
+    );
+    messageBus.subscribe<AgentProgressUpdate>(
+      MessageBusType.AGENT_PROGRESS_UPDATE,
+      updateHandler,
+    );
+    messageBus.subscribe<AgentProgressComplete>(
+      MessageBusType.AGENT_PROGRESS_COMPLETE,
+      completeHandler,
+    );
+
+    return () => {
+      messageBus.unsubscribe(MessageBusType.AGENT_PROGRESS_START, startHandler);
+      messageBus.unsubscribe(
+        MessageBusType.AGENT_PROGRESS_UPDATE,
+        updateHandler,
+      );
+      messageBus.unsubscribe(
+        MessageBusType.AGENT_PROGRESS_COMPLETE,
+        completeHandler,
+      );
+    };
+  }, [config]);
 
   // Sync user tier from config when authentication changes
   useEffect(() => {
@@ -1237,6 +1437,10 @@ Logging in with Google... Restarting Gemini CLI to continue.
         if (activePtyId || embeddedShellFocused) {
           setEmbeddedShellFocused((prev) => !prev);
         }
+      } else if (keyMatchers[Command.TOGGLE_MODE](key)) {
+        // Toggle between Plan Mode and Default Mode
+        const modeCommand = isPlanMode ? '/mode default' : '/mode plan';
+        void handleSlashCommand(modeCommand);
       }
     },
     [
@@ -1257,6 +1461,7 @@ Logging in with Google... Restarting Gemini CLI to continue.
       setCopyModeEnabled,
       copyModeEnabled,
       isAlternateBuffer,
+      isPlanMode,
     ],
   );
 
@@ -1371,6 +1576,8 @@ Logging in with Google... Restarting Gemini CLI to continue.
     !!customDialog ||
     confirmUpdateExtensionRequests.length > 0 ||
     !!loopDetectionConfirmationRequest ||
+    !!askUserQuestionRequest ||
+    !!planModeApprovalRequest ||
     isThemeDialogOpen ||
     isSettingsDialogOpen ||
     isModelDialogOpen ||
@@ -1452,6 +1659,10 @@ Logging in with Google... Restarting Gemini CLI to continue.
       showPrivacyNotice,
       corgiMode,
       debugMessage,
+      askUserQuestionRequest,
+      planModeApprovalRequest,
+      isPlanMode,
+      planFilePath,
       quittingMessages,
       isSettingsDialogOpen,
       isSessionBrowserOpen,
@@ -1528,6 +1739,7 @@ Logging in with Google... Restarting Gemini CLI to continue.
       bannerData,
       bannerVisible,
       terminalBackgroundColor: config.getTerminalBackground(),
+      activeAgents,
     }),
     [
       isThemeDialogOpen,
@@ -1541,6 +1753,10 @@ Logging in with Google... Restarting Gemini CLI to continue.
       showPrivacyNotice,
       corgiMode,
       debugMessage,
+      askUserQuestionRequest,
+      planModeApprovalRequest,
+      isPlanMode,
+      planFilePath,
       quittingMessages,
       isSettingsDialogOpen,
       isSessionBrowserOpen,
@@ -1619,6 +1835,7 @@ Logging in with Google... Restarting Gemini CLI to continue.
       warningMessage,
       bannerData,
       bannerVisible,
+      activeAgents,
       config,
     ],
   );
@@ -1650,6 +1867,8 @@ Logging in with Google... Restarting Gemini CLI to continue.
       setConstrainHeight,
       onEscapePromptChange: handleEscapePromptChange,
       refreshStatic,
+      handleAskUserQuestionComplete,
+      handlePlanModeApprovalComplete,
       handleFinalSubmit,
       handleClearScreen,
       handleProQuotaChoice,
@@ -1696,6 +1915,8 @@ Logging in with Google... Restarting Gemini CLI to continue.
       popAllMessages,
       handleApiKeySubmit,
       handleApiKeyCancel,
+      handleAskUserQuestionComplete,
+      handlePlanModeApprovalComplete,
       setBannerVisible,
       setEmbeddedShellFocused,
     ],

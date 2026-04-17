@@ -58,6 +58,8 @@ import {
   createAvailabilityContextProvider,
 } from '../availability/policyHelpers.js';
 import type { RetryAvailabilityContext } from '../utils/retry.js';
+import { analyzePrompt } from '../agents/task-router.js';
+import { LocalSubagentInvocation } from '../agents/local-invocation.js';
 
 const MAX_TURNS = 100;
 
@@ -440,6 +442,20 @@ export class GeminiClient {
       }
     }
 
+    // Auto-routing: Check if prompt should be routed to a built-in agent
+    // Note: Built-in agent auto-routing works independently of isAgentsEnabled(),
+    // which only controls whether the LLM can use the Task/delegate tool.
+    if (this.config.getAutoRoutingEnabled() && !isInvalidStreamRetry) {
+      const autoRouteResult = yield* this.tryAutoRoute(
+        request,
+        signal,
+        prompt_id,
+      );
+      if (autoRouteResult) {
+        return autoRouteResult;
+      }
+    }
+
     if (this.lastPromptId !== prompt_id) {
       this.loopDetector.reset(prompt_id);
       this.lastPromptId = prompt_id;
@@ -656,6 +672,125 @@ export class GeminiClient {
         );
       }
     }
+
+    return turn;
+  }
+
+  /**
+   * Attempts to auto-route a user prompt to a built-in agent.
+   * Returns a Turn if routing was successful, null if prompt should go to LLM.
+   */
+  private async *tryAutoRoute(
+    request: PartListUnion,
+    signal: AbortSignal,
+    prompt_id: string,
+  ): AsyncGenerator<ServerGeminiStreamEvent, Turn | null> {
+    // Extract text from the request
+    const requestArray = Array.isArray(request) ? request : [request];
+    const promptText = requestArray
+      .map((part) => {
+        if (typeof part === 'string') return part;
+        if ('text' in part && typeof part.text === 'string') return part.text;
+        return '';
+      })
+      .join(' ')
+      .trim();
+
+    if (!promptText) {
+      return null;
+    }
+
+    // Analyze the prompt for routing
+    const routingResult = analyzePrompt(promptText);
+
+    // Only route on medium or high confidence
+    if (
+      !routingResult.agent ||
+      routingResult.confidence === 'low' ||
+      routingResult.confidence === 'none'
+    ) {
+      return null;
+    }
+
+    // Get the agent definition
+    const agentRegistry = this.config.getAgentRegistry();
+    const agentDefinition = agentRegistry.getDefinition(routingResult.agent);
+
+    if (!agentDefinition || agentDefinition.kind !== 'local') {
+      return null;
+    }
+
+    // Emit auto-routing event
+    yield {
+      type: GeminiEventType.AutoRouted,
+      value: {
+        agentName: routingResult.agent,
+        confidence: routingResult.confidence,
+      },
+    };
+
+    // Create and execute the agent invocation
+    const messageBus = this.config.getMessageBus();
+    const invocation = new LocalSubagentInvocation(
+      agentDefinition,
+      this.config,
+      { prompt: promptText },
+      messageBus,
+    );
+
+    // Execute the agent
+    const result = await invocation.execute(signal, (output) => {
+      // Output is streamed via MESSAGE_BUS AgentProgress events
+      debugLogger.debug('Auto-route agent output:', output);
+    });
+
+    // Create a Turn with the agent result
+    const turn = new Turn(this.getChat(), prompt_id);
+
+    // Add the user message to chat history
+    this.getChat().addHistory({
+      role: 'user',
+      parts: requestArray.map((part) => {
+        if (typeof part === 'string') return { text: part };
+        return part;
+      }),
+    });
+
+    // Extract result text from ToolResult.llmContent (PartListUnion type)
+    let resultText: string;
+    if (typeof result.llmContent === 'string') {
+      resultText = result.llmContent;
+    } else if (Array.isArray(result.llmContent)) {
+      resultText = result.llmContent
+        .map((p) => {
+          if (typeof p === 'string') return p;
+          if (typeof p === 'object' && p !== null && 'text' in p) {
+            return (p as { text: string }).text;
+          }
+          return '';
+        })
+        .join('\n');
+    } else if (
+      typeof result.llmContent === 'object' &&
+      result.llmContent !== null &&
+      'text' in result.llmContent
+    ) {
+      resultText = (result.llmContent as { text: string }).text;
+    } else {
+      resultText = '';
+    }
+
+    // Add the agent response to chat history
+    this.getChat().addHistory({
+      role: 'model',
+      parts: [{ text: resultText }],
+    });
+
+    // Yield the content event with the agent's response
+    yield {
+      type: GeminiEventType.Content,
+      value: resultText,
+    };
 
     return turn;
   }
